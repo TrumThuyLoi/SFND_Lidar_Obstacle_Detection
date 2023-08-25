@@ -47,7 +47,7 @@ std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT
     typename pcl::PointCloud<PointT>::Ptr cloud_non_plane(new pcl::PointCloud<PointT>());
 
     // Copy inliers to cloud_plane
-    for(int index : inliers->indices)
+    for(int& index : inliers->indices)
     {
         cloud_plane->push_back(cloud->at(index));
     }

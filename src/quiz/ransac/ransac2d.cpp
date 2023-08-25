@@ -71,14 +71,14 @@ std::unordered_set<int> Ransac(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, int ma
 	// TODO: Fill in this function
 	std::unordered_set<int> tempInliersResult;
 	
-	int num_sample = 2;
-	std::vector<pcl::PointCloud<pcl::PointXYZ>::iterator> samples(num_sample);
+	const int num_sample = 3;
+	std::array<pcl::PointCloud<pcl::PointXYZ>::iterator, num_sample> samples{};
 
 	// For max iterations 
 	for(int iteration = 0; iteration < maxIterations; iteration++)
 	{
 		// Randomly sample subset and fit line
-		while(tempInliersResult.size() < 2)
+		while(tempInliersResult.size() < num_sample)
 		{
 			tempInliersResult.insert(rand() % cloud->size());
 		}
@@ -86,19 +86,32 @@ std::unordered_set<int> Ransac(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, int ma
 		auto iter = tempInliersResult.begin();
 		for(int i=0; i < num_sample; i++)
 		{
-			samples.at(i) = cloud->begin() + (*iter);
+			samples[i] = cloud->begin() + (*iter);
 			iter++;
 		}
 
-		double coefA = samples[0]->y - samples[1]->y;
-		double coefB = samples[1]->x - samples[0]->x;
-		double coefC = samples[0]->x*samples[1]->y - samples[1]->x*samples[0]->y;
+		Eigen::Vector3f v1(samples[1]->x - samples[0]->x, samples[1]->y - samples[0]->y, samples[1]->z - samples[0]->z);
+		Eigen::Vector3f v2(samples[2]->x - samples[0]->x, samples[2]->y - samples[0]->y, samples[2]->z - samples[0]->z);
+		Eigen::Vector3f normal_vec = v1.cross(v2);
+		// LOG_INFO("Adress of v1: %p, v1<%lf, %lf, %lf>", v1[0], v1[1], v1[2]);
+		// LOG_INFO("Adress of v2: %p, v2<%lf, %lf, %lf>", v2[0], v2[1], v2[2]);
+		// LOG_INFO("Adress of normal_vec: %p, normal_vec<%lf, %lf, %lf>", normal_vec[0], normal_vec[1], normal_vec[2]);
+
+		// double coefA = samples[0]->y - samples[1]->y;
+		// double coefB = samples[1]->x - samples[0]->x;
+		// double coefC = samples[0]->x*samples[1]->y - samples[1]->x*samples[0]->y;
+
+		float coefA = normal_vec[0];
+		float coefB = normal_vec[1];
+		float coefC = normal_vec[2];
+		float coefD = -(normal_vec[0]*samples[0]->x + normal_vec[1]*samples[0]->y + normal_vec[2]*samples[0]->z);
 
 		// Measure distance between every point and fitted line
 		double distance = std::numeric_limits<double>::infinity(); 
 		for(auto it_point = cloud->begin(); it_point != cloud->end(); it_point++)
 		{
-			distance = abs(coefA*it_point->x + coefB*it_point->y + coefC) / sqrt(coefA*coefA + coefB*coefB);
+			// 	distance = abs(coefA*it_point->x + coefB*it_point->y + coefC) / sqrt(coefA*coefA + coefB*coefB);
+			distance = abs(coefA*it_point->x + coefB*it_point->y + coefC*it_point->z + coefD) / sqrt(coefA*coefA + coefB*coefB + coefC*coefC);
 
 			// If distance is smaller than threshold count it as inlier
 			if(distance < distanceTol)
@@ -130,11 +143,11 @@ int main ()
 	pcl::visualization::PCLVisualizer::Ptr viewer = initScene();
 
 	// Create data
-	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = CreateData();
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = CreateData3D();
 	
 
 	// TODO: Change the max iteration and distance tolerance arguments for Ransac function
-	std::unordered_set<int> inliers = Ransac(cloud, 50, 0.5f);
+	std::unordered_set<int> inliers = Ransac(cloud, 50, 0.2f);
 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr  cloudInliers(new pcl::PointCloud<pcl::PointXYZ>());
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloudOutliers(new pcl::PointCloud<pcl::PointXYZ>());
