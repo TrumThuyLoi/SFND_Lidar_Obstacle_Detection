@@ -93,13 +93,6 @@ std::unordered_set<int> Ransac(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, int ma
 		Eigen::Vector3f v1(samples[1]->x - samples[0]->x, samples[1]->y - samples[0]->y, samples[1]->z - samples[0]->z);
 		Eigen::Vector3f v2(samples[2]->x - samples[0]->x, samples[2]->y - samples[0]->y, samples[2]->z - samples[0]->z);
 		Eigen::Vector3f normal_vec = v1.cross(v2);
-		// LOG_INFO("Adress of v1: %p, v1<%lf, %lf, %lf>", v1[0], v1[1], v1[2]);
-		// LOG_INFO("Adress of v2: %p, v2<%lf, %lf, %lf>", v2[0], v2[1], v2[2]);
-		// LOG_INFO("Adress of normal_vec: %p, normal_vec<%lf, %lf, %lf>", normal_vec[0], normal_vec[1], normal_vec[2]);
-
-		// double coefA = samples[0]->y - samples[1]->y;
-		// double coefB = samples[1]->x - samples[0]->x;
-		// double coefC = samples[0]->x*samples[1]->y - samples[1]->x*samples[0]->y;
 
 		float coefA = normal_vec[0];
 		float coefB = normal_vec[1];
@@ -110,7 +103,6 @@ std::unordered_set<int> Ransac(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, int ma
 		double distance = std::numeric_limits<double>::infinity(); 
 		for(auto it_point = cloud->begin(); it_point != cloud->end(); it_point++)
 		{
-			// 	distance = abs(coefA*it_point->x + coefB*it_point->y + coefC) / sqrt(coefA*coefA + coefB*coefB);
 			distance = abs(coefA*it_point->x + coefB*it_point->y + coefC*it_point->z + coefD) / sqrt(coefA*coefA + coefB*coefB + coefC*coefC);
 
 			// If distance is smaller than threshold count it as inlier
