@@ -4,6 +4,8 @@
 
 #include <memory>
 
+#include <pcl/common/pca.h>
+
 #include "sensors/lidar.h"
 #include "render/render.h"
 #include "processPointClouds.h"
@@ -69,6 +71,50 @@ void simpleHighway(pcl::visualization::PCLVisualizer::Ptr& viewer)
         std::cout << "cluster size ";
         pointProcessor.numPoints(cluster);
         renderPointCloud(viewer, cluster, "obstCloud" + std::to_string(clusterId), colors[clusterId]);
+
+        Eigen::Vector4f pcaCentroid;
+        pcl::compute3DCentroid(*cluster, pcaCentroid);
+        Eigen::Matrix3f covariance;
+        computeCovarianceMatrixNormalized(*cluster, pcaCentroid, covariance);
+        Eigen::SelfAdjointEigenSolver<Eigen::Matrix3f> eigen_solver(covariance, Eigen::ComputeEigenvectors);
+        Eigen::Matrix3f eigenVectorsPCA = eigen_solver.eigenvectors();
+        
+        /// This line is necessary for proper orientation in some cases. The numbers come out the same without it, but
+        /// the signs are different and the box doesn't get correctly oriented in some cases.
+        eigenVectorsPCA.col(2) = eigenVectorsPCA.col(0).cross(eigenVectorsPCA.col(1));
+
+        // Note that getting the eigenvectors can also be obtained via the PCL PCA interface with something like:
+        pcl::PointCloud<pcl::PointXYZ>::Ptr cloudPCAprojection (new pcl::PointCloud<pcl::PointXYZ>());
+        pcl::PCA<pcl::PointXYZ> pca;
+        pca.setInputCloud(cluster);
+        pca.project(*cluster, *cloudPCAprojection);
+        std::cerr << std::endl << "EigenVectors: " << pca.getEigenVectors() << std::endl;
+        std::cerr << std::endl << "EigenValues: " << pca.getEigenValues() << std::endl;
+        // In this case, pca.getEigenVectors() gives similar eigenVectors to eigenVectorsPCA.
+        
+        // Transform the original cloud to the origin where the principal components correspond to the axes.
+        Eigen::Matrix4f projectionTransform(Eigen::Matrix4f::Identity());
+        projectionTransform.block<3,3>(0,0) = eigenVectorsPCA.transpose();
+        projectionTransform.block<3,1>(0,3) = -1.f * (projectionTransform.block<3,3>(0,0) * pcaCentroid.head<3>());
+        pcl::PointCloud<pcl::PointXYZ>::Ptr cloudPointsProjected (new pcl::PointCloud<pcl::PointXYZ>);
+        pcl::transformPointCloud(*cluster, *cloudPointsProjected, projectionTransform);
+        // Get the minimum and maximum points of the transformed cloud.
+        pcl::PointXYZ minPoint, maxPoint;
+        pcl::getMinMax3D(*cloudPointsProjected, minPoint, maxPoint);
+        const Eigen::Vector3f meanDiagonal = 0.5f*(maxPoint.getVector3fMap() + minPoint.getVector3fMap());
+
+        // Final transform
+        BoxQ boxQ = {
+            eigenVectorsPCA * meanDiagonal + pcaCentroid.head<3>(),
+            Eigen::Quaternionf(eigenVectorsPCA),    //Quaternions are a way to do rotations https://www.youtube.com/watch?v=mHVwd8gYLnI
+            maxPoint.x - minPoint.x,
+            maxPoint.y - minPoint.y,
+            maxPoint.z - minPoint.z
+        };
+        // boxQ.bboxTransform = eigenVectorsPCA * meanDiagonal + pcaCentroid.head<3>();
+        // boxQ.bboxQuaternion = Eigen::Vector3f(eigenVectorsPCA); //Quaternions are a way to do rotations https://www.youtube.com/watch?v=mHVwd8gYLnI
+
+        renderBox(viewer, boxQ, clusterId);
         ++clusterId;
     }
 }

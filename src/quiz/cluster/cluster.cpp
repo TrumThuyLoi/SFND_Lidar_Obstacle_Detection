@@ -82,14 +82,14 @@ void Proximity(	const std::vector<std::vector<float>>& points,
 				float distanceTol, 
 				std::vector<bool>& is_processed)
 {
-	if(is_processed[cur_point_idx])
-		return;
-
 	is_processed[cur_point_idx] = true;
 	cluster.emplace_back(cur_point_idx);
 	std::vector<int> nearby_points = tree->search(points[cur_point_idx], distanceTol);
 	for(const int& idx : nearby_points)
-	{
+	{	
+		if(is_processed[idx])
+			continue;
+
 		Proximity(points, idx, cluster, tree, distanceTol, is_processed);
 	}
 }
