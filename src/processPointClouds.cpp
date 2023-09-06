@@ -117,7 +117,7 @@ std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT
     // Segment the largest planar component from the remaining cloud
     seg.setInputCloud(cloud);
     seg.segment(*inliers, *coef);
-    LOG_INFO("inliers->indices.size() = %d", inliers->indices.size());
+    LOG_INFO("inliers->indices.size() = %lu", inliers->indices.size());
     if(inliers->indices.size() <= 0)
     {
         LOG_INFO("Could not estimate a planar model for the given dataset.");
@@ -215,8 +215,8 @@ BoxQ ProcessPointClouds<PointT>::minimalBoundingBox(typename pcl::PointCloud<Poi
     pcl::PCA<PointT> pca;
     pca.setInputCloud(cluster);
     pca.project(*cluster, *cloudPCAprojection);
-    std::cerr << std::endl << "EigenVectors: " << pca.getEigenVectors() << std::endl;
-    std::cerr << std::endl << "EigenValues: " << pca.getEigenValues() << std::endl;
+    // std::cerr << std::endl << "EigenVectors: " << pca.getEigenVectors() << std::endl;
+    // std::cerr << std::endl << "EigenValues: " << pca.getEigenValues() << std::endl;
     // In this case, pca.getEigenVectors() gives similar eigenVectors to eigenVectorsPCA.
     
     // Transform the original cloud to the origin where the principal components correspond to the axes.

@@ -6,8 +6,6 @@
 
 #include "../../render/render.h"
 #include "../../processPointClouds.h"
-// using templates for processPointClouds so also include .cpp to help linker
-#include "../../processPointClouds.cpp"
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr CreateData()
 {
@@ -63,7 +61,8 @@ pcl::visualization::PCLVisualizer::Ptr initScene()
   	return viewer;
 }
 
-std::unordered_set<int> Ransac(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, int maxIterations, float distanceTol)
+template<typename PointT>
+std::unordered_set<int> Ransac(typename pcl::PointCloud<PointT>::Ptr cloud, int maxIterations, float distanceTol)
 {
 	std::unordered_set<int> inliersResult;
 	srand(time(NULL));
@@ -72,7 +71,7 @@ std::unordered_set<int> Ransac(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, int ma
 	std::unordered_set<int> tempInliersResult;
 	
 	const int num_sample = 3;
-	std::array<pcl::PointCloud<pcl::PointXYZ>::iterator, num_sample> samples{};
+	std::array<typename pcl::PointCloud<PointT>::iterator, num_sample> samples{};
 
 	// For max iterations 
 	for(int iteration = 0; iteration < maxIterations; iteration++)
@@ -125,49 +124,48 @@ std::unordered_set<int> Ransac(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, int ma
 	// Return indicies of inliers from fitted line with most inliers
 	
 	return inliersResult;
+};
 
-}
+// int main ()
+// {
 
-int main ()
-{
+// 	// Create viewer
+// 	pcl::visualization::PCLVisualizer::Ptr viewer = initScene();
 
-	// Create viewer
-	pcl::visualization::PCLVisualizer::Ptr viewer = initScene();
-
-	// Create data
-	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = CreateData3D();
+// 	// Create data
+// 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = CreateData3D();
 	
 
-	// TODO: Change the max iteration and distance tolerance arguments for Ransac function
-	std::unordered_set<int> inliers = Ransac(cloud, 50, 0.2f);
+// 	// TODO: Change the max iteration and distance tolerance arguments for Ransac function
+// 	std::unordered_set<int> inliers = Ransac<pcl::PointXYZ>(cloud, 50, 0.2f);
 
-	pcl::PointCloud<pcl::PointXYZ>::Ptr  cloudInliers(new pcl::PointCloud<pcl::PointXYZ>());
-	pcl::PointCloud<pcl::PointXYZ>::Ptr cloudOutliers(new pcl::PointCloud<pcl::PointXYZ>());
+// 	pcl::PointCloud<pcl::PointXYZ>::Ptr  cloudInliers(new pcl::PointCloud<pcl::PointXYZ>());
+// 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloudOutliers(new pcl::PointCloud<pcl::PointXYZ>());
 
-	for(int index = 0; index < cloud->points.size(); index++)
-	{
-		pcl::PointXYZ point = cloud->points[index];
-		if(inliers.count(index))
-			cloudInliers->points.push_back(point);
-		else
-			cloudOutliers->points.push_back(point);
-	}
+// 	for(int index = 0; index < cloud->points.size(); index++)
+// 	{
+// 		pcl::PointXYZ point = cloud->points[index];
+// 		if(inliers.count(index))
+// 			cloudInliers->points.push_back(point);
+// 		else
+// 			cloudOutliers->points.push_back(point);
+// 	}
 
 
-	// Render 2D point cloud with inliers and outliers
-	if(inliers.size())
-	{
-		renderPointCloud(viewer,cloudInliers,"inliers",Color(0,1,0));
-  		renderPointCloud(viewer,cloudOutliers,"outliers",Color(1,0,0));
-	}
-  	else
-  	{
-  		renderPointCloud(viewer,cloud,"data");
-  	}
+// 	// Render 2D point cloud with inliers and outliers
+// 	if(inliers.size())
+// 	{
+// 		renderPointCloud(viewer,cloudInliers,"inliers",Color(0,1,0));
+//   		renderPointCloud(viewer,cloudOutliers,"outliers",Color(1,0,0));
+// 	}
+//   	else
+//   	{
+//   		renderPointCloud(viewer,cloud,"data");
+//   	}
 	
-  	while (!viewer->wasStopped ())
-  	{
-  	  viewer->spin();
-  	}
+//   	while (!viewer->wasStopped ())
+//   	{
+//   	  viewer->spin();
+//   	}
   	
-}
+// }

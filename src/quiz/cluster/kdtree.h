@@ -5,16 +5,22 @@
 
 
 // Structure to represent node of kd tree
+template<size_t dims>
 struct Node
 {
-	std::vector<float> point;
+	std::array<float, dims> point;
 	int id;
 	Node* left;
 	Node* right;
 
 	Node(std::vector<float> arr, int setId)
-	:	point(arr), id(setId), left(NULL), right(NULL)
-	{}
+	:	id(setId), left(NULL), right(NULL)
+	{
+		for(int i=0; i < dims; i++)
+		{
+			point[i] = arr[i];
+		}
+	}
 
 	~Node()
 	{
@@ -23,9 +29,10 @@ struct Node
 	}
 };
 
+template<size_t dims>
 struct KdTree
 {
-	Node* root;
+	Node<dims>* root;
 
 	KdTree()
 	: root(NULL)
@@ -36,15 +43,15 @@ struct KdTree
 		delete root;
 	}
 
-	void insertHelper(Node*& node, int depth, const std::vector<float>& point, int id)
+	void insertHelper(Node<dims>*& node, int depth, const std::vector<float>& point, int id)
 	{
 		if(NULL == node)
 		{
-			node = new Node(point, id);
+			node = new Node<dims>(point, id);
 			return;
 		}
 
-		if(point[depth%2] < node->point[depth%2])
+		if(point[depth%dims] < node->point[depth%dims])
 		{
 			insertHelper(node->left, depth+1, point, id);
 		}
@@ -58,14 +65,14 @@ struct KdTree
 		insertHelper(root, 0, point, id);
 	}
 
-	void searchHelper(std::vector<int>& ids, Node*& node, int depth, std::vector<float>& target, float distanceTol)
+	void searchHelper(std::vector<int>& ids, Node<dims>*& node, int depth, std::vector<float>& target, float distanceTol)
 	{
 		if(NULL == node)
 			return;
 
 		// Check if this node is in a boxed square that is 2 x distanceTol for length, centered around the target point.
-		if(target[0] - distanceTol <= node->point[0] && node->point[0] <= target[0] + distanceTol
-		   && target[1] - distanceTol <= node->point[1] && node->point[1] <= target[1] + distanceTol)
+		if(	target[0] - distanceTol <= node->point[0] && node->point[0] <= target[0] + distanceTol
+			&& target[1] - distanceTol <= node->point[1] && node->point[1] <= target[1] + distanceTol)
 		{
 			float distance_squared = (target[0] - node->point[0])*(target[0] - node->point[0]) + (target[1] - node->point[1])*(target[1] - node->point[1]);
 			float distance = sqrt(distance_squared);
@@ -75,12 +82,12 @@ struct KdTree
 			}
 		}
 		
-		if(target[depth%2] - distanceTol < node->point[depth%2])
+		if(target[depth%dims] - distanceTol < node->point[depth%dims])
 		{
 			searchHelper(ids, node->left, depth+1, target, distanceTol);
 		}
 
-		if(target[depth%2] + distanceTol > node->point[depth%2])
+		if(target[depth%dims] + distanceTol > node->point[depth%dims])
 		{
 			searchHelper(ids, node->right, depth+1, target, distanceTol);
 		}
@@ -93,8 +100,6 @@ struct KdTree
 		searchHelper(ids, root, 0, target, distanceTol);
 		return ids;
 	}
-	
-
 };
 
 
