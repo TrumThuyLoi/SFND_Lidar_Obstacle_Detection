@@ -54,13 +54,10 @@ void simpleHighway(pcl::visualization::PCLVisualizer::Ptr& viewer)
     // TODO:: Create lidar sensor 
     std::shared_ptr<Lidar> lidar = std::make_shared<Lidar>(cars, 0.0);
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloudData = lidar->scan();
-    // renderRays(viewer, lidar->position, cloudData);
-    //renderPointCloud(viewer, cloudData, "Point Cloud", Color(1, 1, 1));
 
     // TODO:: Create point processor
     ProcessPointClouds<pcl::PointXYZ> pointProcessor;
     std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr> segmentCloud = pointProcessor.SegmentPlane(cloudData, 100, 0.2f);
-    //renderPointCloud(viewer, segmentCloud.first, "nonPlaneCloud", Color(1, 0, 0));
     renderPointCloud(viewer, segmentCloud.second, "PlaneCloud", Color(1, 1, 1));
 
     std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> cloudClusters = pointProcessor.Clustering(segmentCloud.first, 1.0, 3, 30);
@@ -88,14 +85,14 @@ void cityBlock(pcl::visualization::PCLVisualizer::Ptr& viewer, ProcessPointCloud
 
     pcl::PointCloud<pcl::PointXYZI>::Ptr region_cloud = pointProcessorI.FilterCloud(inputCloud, 0.2, Eigen::Vector4f(-10, -5, -2, 1), Eigen::Vector4f(30, 8, 1, 1));
 
-    std::unordered_set<int> inliers = Ransac<pcl::PointXYZI>(region_cloud, 50, 0.2);
+    std::unordered_set<int> plane_indices = Ransac<pcl::PointXYZI>(region_cloud, 50, 0.2);
     pcl::PointCloud<pcl::PointXYZI>::Ptr plane_cloud(new pcl::PointCloud<pcl::PointXYZI>());
 	pcl::PointCloud<pcl::PointXYZI>::Ptr non_plane_cloud(new pcl::PointCloud<pcl::PointXYZI>());
     std::vector<std::vector<float>> obstacle_points;
 
     for(int idx = 0; idx < region_cloud->size(); idx++)
 	{
-		if(inliers.count(idx))
+		if(plane_indices.count(idx))
         {
 			plane_cloud->push_back(region_cloud->at(idx));
         }
@@ -110,21 +107,19 @@ void cityBlock(pcl::visualization::PCLVisualizer::Ptr& viewer, ProcessPointCloud
 
     renderPointCloud(viewer,plane_cloud,"PlaneCloud", Color(1, 1, 1));
 
-    // LOG_INFO("obstacle_points.size() = %lu; non_plane_cloud->size() = %lu", obstacle_points.size(), non_plane_cloud->size());
     KdTree<3>* kdTree = new KdTree<3>();
     for(int i=0; i < obstacle_points.size(); i++)
     {
         kdTree->insert(obstacle_points[i], i);
     }
-    std::vector<pcl::PointIndices> clusters_cloud = euclideanCluster<3>(obstacle_points, kdTree, 0.4);
+    std::vector<pcl::PointIndices::Ptr> clusters_cloud = euclideanCluster<3>(obstacle_points, kdTree, 0.4);
     pcl::ExtractIndices<pcl::PointXYZI> extract;
+    pcl::PointCloud<pcl::PointXYZI>::Ptr cluster_cloud(new pcl::PointCloud<pcl::PointXYZI>());
     std::vector<Color> colors = {Color(1, 0, 0), Color(0, 1, 0), Color(0, 0, 1)};
     for(int cluster_id = 0; cluster_id < clusters_cloud.size(); cluster_id++)
     {
-        pcl::PointCloud<pcl::PointXYZI>::Ptr cluster_cloud(new pcl::PointCloud<pcl::PointXYZI>());
-        pcl::PointIndices::Ptr inliers(&clusters_cloud[cluster_id]);
         extract.setInputCloud(non_plane_cloud);
-        extract.setIndices(inliers);
+        extract.setIndices(clusters_cloud[cluster_id]);
         extract.setNegative(false);
         extract.filter(*cluster_cloud);
 
@@ -135,21 +130,9 @@ void cityBlock(pcl::visualization::PCLVisualizer::Ptr& viewer, ProcessPointCloud
 
         renderPointCloud(viewer, cluster_cloud, "obstacleCloud" + std::to_string(cluster_id), colors[cluster_id % colors.size()]);
         
-        BoxQ box = pointProcessorI.minimalBoundingBox(cluster_cloud);
+        Box box = pointProcessorI.BoundingBox(cluster_cloud);
         renderBox(viewer, box, cluster_id);
     }
-    // int clusterId = 0;
-    // std::vector<Color> colors = {Color(1, 0, 0), Color(0, 1, 0), Color(0, 0, 1)};
-    // for (pcl::PointCloud<pcl::PointXYZI>::Ptr cluster : cloud_cluster)
-    // {
-    //     std::cout << "cluster size ";
-    //     pointProcessorI.numPoints(cluster);
-    //     renderPointCloud(viewer, cluster, "obstCloud" + std::to_string(clusterId), colors[clusterId % colors.size()]);
-
-    //     Box box = pointProcessorI.BoundingBox(cluster);
-    //     renderBox(viewer, box, clusterId);
-    //     ++clusterId;
-    // }
 }
 
 //setAngle: SWITCH CAMERA ANGLE {XY, TopDown, Side, FPS}
@@ -181,7 +164,7 @@ int main (int argc, char** argv)
     std::cout << "starting enviroment" << std::endl;
 
     pcl::visualization::PCLVisualizer::Ptr viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
-    CameraAngle setAngle = XY;
+    CameraAngle setAngle = FPS;
     initCamera(setAngle, viewer);
 
     ProcessPointClouds<pcl::PointXYZI> pointProcessorI;
