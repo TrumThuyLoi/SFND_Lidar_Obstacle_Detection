@@ -70,9 +70,18 @@ struct KdTree
 		if(NULL == node)
 			return;
 
-		// Check if this node is in a boxed square that is 2 x distanceTol for length, centered around the target point.
-		if(	target[0] - distanceTol <= node->point[0] && node->point[0] <= target[0] + distanceTol
-			&& target[1] - distanceTol <= node->point[1] && node->point[1] <= target[1] + distanceTol)
+		// Check if this node is in a boxed square that is dims x distanceTol for length, centered around the target point.
+		bool isIn = true;
+		for(int i=0; i < dims; i++)
+		{
+			if(node->point[i] < target[i] - distanceTol  || target[i] + distanceTol < node->point[i])
+			{
+				isIn = false;
+				break;
+			}
+		}
+
+		if(isIn)
 		{
 			float distance_squared = (target[0] - node->point[0])*(target[0] - node->point[0]) + (target[1] - node->point[1])*(target[1] - node->point[1]);
 			float distance = sqrt(distance_squared);
