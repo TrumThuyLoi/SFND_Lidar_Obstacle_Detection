@@ -83,7 +83,11 @@ struct KdTree
 
 		if(isIn)
 		{
-			float distance_squared = (target[0] - node->point[0])*(target[0] - node->point[0]) + (target[1] - node->point[1])*(target[1] - node->point[1]);
+			float distance_squared = 0.0;
+			for(int i=0; i < dims; i++)
+			{
+				distance_squared += (target[i] - node->point[i])*(target[i] - node->point[i]);
+			}
 			float distance = sqrt(distance_squared);
 			if(distance <= distanceTol)
 			{
